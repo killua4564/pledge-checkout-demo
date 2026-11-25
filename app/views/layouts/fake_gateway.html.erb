@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="zh-Hant-TW">
+  <head>
+    <title>假金流 FakePay（Demo）</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <%= csrf_meta_tags %>
+    <%= stylesheet_link_tag :app, "data-turbo-track": "reload" %>
+    <%= javascript_importmap_tags %>
+  </head>
+
+  <%# 刻意用不同配色，讓人一眼看出「現在在金流公司的網站」 %>
+  <body class="bg-slate-800 text-slate-100 min-h-screen">
+    <header class="border-b border-slate-600">
+      <div class="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
+        <span class="font-bold">FakePay 假金流</span>
+        <span class="text-xs text-slate-400">這是模擬第三方金流的頁面，只在開發環境存在</span>
+      </div>
+    </header>
+    <main class="max-w-4xl mx-auto px-4 py-6">
+      <% if notice.present? %><p class="mb-4 rounded bg-emerald-900 px-4 py-2"><%= notice %></p><% end %>
+      <% if alert.present? %><p class="mb-4 rounded bg-red-900 px-4 py-2"><%= alert %></p><% end %>
+      <%= yield %>
+    </main>
+  </body>
+</html>

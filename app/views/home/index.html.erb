@@ -1,0 +1,36 @@
+<section class="mb-8 rounded bg-white border p-6">
+  <h1 class="text-xl font-bold mb-1">輸入方案 ID 前往結帳</h1>
+  <p class="text-sm text-gray-500 mb-4">方案 ID 列在下方各專案的方案旁邊。</p>
+
+  <% if @error %>
+    <p class="mb-3 rounded bg-red-50 border border-red-200 px-3 py-2 text-red-700"><%= @error %></p>
+  <% end %>
+
+  <%= form_with url: go_path, method: :get, class: "flex gap-2" do |f| %>
+    <%= f.text_field :reward_id, placeholder: "例：1", inputmode: "numeric",
+          class: "border rounded px-3 py-2 w-40", aria: { label: "方案 ID" } %>
+    <%= f.submit "前往結帳", name: nil, class: "rounded bg-emerald-600 text-white px-4 py-2 cursor-pointer" %>
+  <% end %>
+</section>
+
+<h2 class="text-lg font-bold mb-3">專案</h2>
+<div class="grid gap-4 md:grid-cols-2">
+  <% @projects.each do |project| %>
+    <article class="rounded bg-white border p-5">
+      <h3 class="font-bold mb-1"><%= link_to project.title, project_path(project), class: "hover:underline" %></h3>
+      <p class="text-sm text-gray-500 mb-3"><%= project.summary %></p>
+      <ul class="text-sm space-y-1">
+        <% project.rewards.each do |reward| %>
+          <li class="flex justify-between">
+            <span>
+              <span class="inline-block w-14 text-gray-400">ID <%= reward.id %></span>
+              <%= reward.title %>
+            </span>
+            <span><%= Money.format(reward.price, project.currency) %></span>
+          </li>
+        <% end %>
+      </ul>
+      <%= link_to "選擇回饋方案 →", project_rewards_path(project), class: "inline-block mt-3 text-emerald-700 text-sm hover:underline" %>
+    </article>
+  <% end %>
+</div>

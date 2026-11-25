@@ -1,0 +1,55 @@
+<h1 class="text-xl font-bold mb-1">假金流 Demo 工具</h1>
+<p class="text-sm text-slate-400 mb-6">故意送出各種異常通知，觀察系統怎麼處理。下方「收到的通知」表格會顯示處理結果。</p>
+
+<div class="mb-6">
+  <%= button_to "執行逾期處理（等同 bin/rails orders:expire_overdue）", fake_gateway_debug_expire_overdue_path,
+        method: :post, class: "rounded bg-amber-600 px-4 py-2 text-sm cursor-pointer" %>
+</div>
+
+<h2 class="font-bold mb-2">最近的付款</h2>
+<div class="overflow-x-auto mb-8">
+  <table class="w-full text-sm">
+    <thead class="text-left text-slate-400">
+      <tr><th class="py-1 pr-3">交易編號</th><th class="pr-3">方案</th><th class="pr-3">金額</th><th class="pr-3">訂單</th><th class="pr-3">付款</th><th>送出異常通知</th></tr>
+    </thead>
+    <tbody>
+      <% @payments.each do |payment| %>
+        <tr class="border-t border-slate-600 align-top">
+          <td class="py-2 pr-3 font-mono text-xs"><%= link_to payment.provider_trade_no, order_path(payment.order), class: "underline" %></td>
+          <td class="pr-3"><%= payment.order.reward.title %>（<%= payment.payment_method == "atm" ? "ATM" : "信用卡" %>）</td>
+          <td class="pr-3"><%= Money.format(payment.amount, payment.currency) %></td>
+          <td class="pr-3"><%= payment.order.status_label %></td>
+          <td class="pr-3"><%= payment.status %><%= " (#{payment.review_reason})" if payment.review_reason %></td>
+          <td class="flex flex-wrap gap-1">
+            <% { "resend" => "重送最後一次", "bad_signature" => "錯誤簽章", "amount_mismatch" => "金額不符",
+                 "success_then_failed" => "先成功再失敗", "success" => "成功", "failed" => "失敗" }.each do |scenario, label| %>
+              <%= button_to label, fake_gateway_debug_action_path(payment, scenario), method: :post,
+                    class: "rounded bg-slate-600 hover:bg-slate-500 px-2 py-0.5 text-xs cursor-pointer" %>
+            <% end %>
+          </td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+</div>
+
+<h2 class="font-bold mb-2">收到的通知（payment_events）</h2>
+<div class="overflow-x-auto">
+  <table class="w-full text-sm">
+    <thead class="text-left text-slate-400">
+      <tr><th class="py-1 pr-3">#</th><th class="pr-3">時間</th><th class="pr-3">event_id</th><th class="pr-3">簽章</th><th class="pr-3">結果</th><th>說明</th></tr>
+    </thead>
+    <tbody>
+      <% @events.each do |event| %>
+        <tr class="border-t border-slate-600">
+          <td class="py-1 pr-3"><%= event.id %></td>
+          <td class="pr-3"><%= event.created_at.strftime("%H:%M:%S") %></td>
+          <td class="pr-3 font-mono text-xs"><%= event.event_id || "—" %></td>
+          <td class="pr-3"><%= event.signature_valid ? "✓" : "✗" %></td>
+          <td class="pr-3 font-bold"><%= event.result %></td>
+          <td class="text-slate-300"><%= event.note %></td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+</div>

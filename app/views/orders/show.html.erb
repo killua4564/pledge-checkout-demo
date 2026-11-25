@@ -1,0 +1,48 @@
+<% content_for :title, "訂單 #{@order.status_label}" %>
+<%# 重新整理時保留捲動位置，只更新有變的部分（Turbo 8 morph） %>
+<% content_for :head, turbo_refreshes_with(method: :morph, scroll: :preserve) %>
+<%#
+  訂單頁：依訂單狀態顯示完成頁、失敗頁、ATM 繳費資訊等。
+  信用卡待付款時，poll controller 每 2 秒重新整理一次頁面，callback 一到畫面就自動更新；
+  訂單離開待付款後，新頁面不再有 poll controller，就自動停止。
+  ATM 訂單不自動更新（見 Order#auto_refresh?），頁面上有「重新整理」按鈕。
+%>
+<div <%= tag.attributes(data: { controller: "poll", poll_interval_value: 2000 }) if @order.auto_refresh? %>>
+  <%= render "orders/status", order: @order %>
+</div>
+
+<section class="mt-6 rounded bg-white border p-5 text-sm">
+  <h2 class="font-bold mb-3">訂單明細</h2>
+  <dl class="grid grid-cols-[8rem_1fr] gap-y-1">
+    <dt class="text-gray-500">訂單編號</dt><dd class="font-mono text-xs break-all"><%= @order.public_id %></dd>
+    <dt class="text-gray-500">專案</dt><dd><%= @order.project.title %></dd>
+    <dt class="text-gray-500">回饋方案</dt><dd><%= @order.reward.title %></dd>
+    <dt class="text-gray-500">付款方式</dt><dd><%= @order.payment_method_label %></dd>
+    <dt class="text-gray-500">收件人</dt><dd><%= @order.recipient_name %>（<%= @order.recipient_phone %>）</dd>
+    <dt class="text-gray-500">收件地址</dt>
+    <dd><%= [@order.ship_zip, @order.ship_city, @order.ship_district, @order.ship_address].compact_blank.join(" ") %></dd>
+    <dt class="text-gray-500">發票</dt>
+    <dd>
+      <% if @order.invoice_type == "company" %>
+        公司發票：<%= @order.company_title %>（<%= @order.company_tax_id %>）
+      <% else %>
+        個人發票<%= "，載具 #{@order.carrier_code}" if @order.carrier_code.present? %>
+      <% end %>
+    </dd>
+  </dl>
+
+  <div class="mt-4 border-t pt-3 flex flex-col gap-1">
+    <div class="flex justify-between"><span>主方案金額</span><span><%= @order.money(@order.reward_amount) %></span></div>
+    <% @order.order_addons.each do |item| %>
+      <div class="flex justify-between text-gray-600"><span>加購：<%= item.title %></span><span>+ <%= @order.money(item.price) %></span></div>
+    <% end %>
+    <% if @order.order_discount %>
+      <div class="flex justify-between text-emerald-700"><span>折扣碼 <%= @order.order_discount.code %></span><span>− <%= @order.money(@order.discount_amount) %></span></div>
+    <% end %>
+    <div class="flex justify-between text-gray-600"><span>運費</span><span>+ <%= @order.money(@order.shipping_amount) %></span></div>
+    <% if @order.donation_amount.positive? %>
+      <div class="flex justify-between text-gray-600"><span>加碼贊助</span><span>+ <%= @order.money(@order.donation_amount) %></span></div>
+    <% end %>
+    <div class="flex justify-between font-bold text-base border-t pt-2 mt-1"><span>總金額</span><span><%= @order.money(@order.total_amount) %></span></div>
+  </div>
+</section>

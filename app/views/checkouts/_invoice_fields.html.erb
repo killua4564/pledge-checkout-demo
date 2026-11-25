@@ -1,0 +1,32 @@
+<%# 發票資訊（只存，不串接）。個人／公司切換由 invoice controller（Stimulus）顯示對應欄位 %>
+<fieldset class="rounded bg-gray-50 border p-4" data-controller="invoice">
+  <legend class="font-bold px-1">發票資訊</legend>
+
+  <div class="flex gap-4 mb-3">
+    <label class="flex items-center gap-1">
+      <%= f.radio_button :invoice_type, "personal", data: { action: "invoice#toggle" } %> 個人發票
+    </label>
+    <label class="flex items-center gap-1">
+      <%= f.radio_button :invoice_type, "company", data: { action: "invoice#toggle" } %> 公司發票
+    </label>
+  </div>
+
+  <div data-invoice-target="personal">
+    <label class="flex flex-col gap-1">
+      <span class="text-sm">手機載具（選填）</span>
+      <%= f.text_field :carrier_code, placeholder: "例：/AB1CD23", class: "border rounded px-3 py-2 w-48" %>
+      <span class="text-xs text-gray-500">未填載具將寄送電子發票至贊助人信箱</span>
+    </label>
+  </div>
+
+  <div data-invoice-target="company" class="grid gap-3 md:grid-cols-2">
+    <label class="flex flex-col gap-1">
+      <span class="text-sm">統一編號</span>
+      <%= f.text_field :company_tax_id, inputmode: "numeric", class: "border rounded px-3 py-2" %>
+    </label>
+    <label class="flex flex-col gap-1">
+      <span class="text-sm">公司抬頭</span>
+      <%= f.text_field :company_title, class: "border rounded px-3 py-2" %>
+    </label>
+  </div>
+</fieldset>

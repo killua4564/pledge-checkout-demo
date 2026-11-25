@@ -1,0 +1,27 @@
+<h1 class="text-xl font-bold mb-4">信用卡付款</h1>
+
+<div class="rounded bg-slate-700 p-5 mb-6">
+  <dl class="grid grid-cols-[7rem_1fr] gap-y-1">
+    <dt class="text-slate-400">交易編號</dt><dd class="font-mono"><%= @payment.provider_trade_no %></dd>
+    <dt class="text-slate-400">商店</dt><dd><%= @order.project.title %></dd>
+    <dt class="text-slate-400">金額</dt><dd class="text-lg font-bold"><%= Money.format(@payment.amount, @payment.currency) %></dd>
+  </dl>
+</div>
+
+<% if @order.pending_payment? %>
+  <%= form_with url: fake_gateway_pay_path(@payment.provider_trade_no), method: :post, class: "flex flex-col gap-4" do |f| %>
+    <label class="flex items-center gap-2 text-sm">
+      callback 延遲送出
+      <%= f.select :delay, [["立即", 0], ["3 秒", 3], ["5 秒", 5], ["10 秒", 10]], {}, class: "bg-white text-slate-900 rounded px-2 py-1" %>
+      <span class="text-slate-400">（模擬金流通知比瀏覽器晚到）</span>
+    </label>
+    <div class="flex gap-3">
+      <%= f.button "付款成功", name: "result", value: "success", class: "rounded bg-emerald-500 text-white px-5 py-2 font-bold cursor-pointer" %>
+      <%= f.button "付款失敗", name: "result", value: "failed", class: "rounded bg-red-500 text-white px-5 py-2 font-bold cursor-pointer" %>
+    </div>
+  <% end %>
+<% else %>
+  <p>這筆訂單目前是「<%= @order.status_label %>」，不能再付款。</p>
+<% end %>
+
+<p class="mt-6 text-sm"><%= link_to "回到商店訂單頁", order_path(@order), class: "underline text-slate-300" %></p>

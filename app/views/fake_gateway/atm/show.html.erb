@@ -1,0 +1,16 @@
+<h1 class="text-xl font-bold mb-4">模擬 ATM 轉帳</h1>
+
+<div class="rounded bg-slate-700 p-5 mb-6">
+  <dl class="grid grid-cols-[7rem_1fr] gap-y-1">
+    <dt class="text-slate-400">虛擬帳號</dt><dd class="font-mono"><%= @payment.virtual_account %></dd>
+    <dt class="text-slate-400">金額</dt><dd class="text-lg font-bold"><%= Money.format(@payment.amount, @payment.currency) %></dd>
+    <dt class="text-slate-400">繳費期限</dt><dd><%= @payment.pay_deadline&.strftime("%Y/%m/%d %H:%M") %></dd>
+  </dl>
+</div>
+
+<%# 刻意不檢查訂單狀態：真實世界的 ATM 不知道訂單過期了沒，逾期後一樣轉得進來 %>
+<%= button_to "模擬已轉帳", fake_gateway_atm_path(@payment.provider_trade_no), method: :post,
+      class: "rounded bg-emerald-500 text-white px-5 py-2 font-bold cursor-pointer" %>
+<p class="mt-2 text-xs text-slate-400">訂單過期後也可以按，用來展示「逾期才付款」會被標記為待退款。</p>
+
+<p class="mt-6 text-sm"><%= link_to "回到商店訂單頁", order_path(@order), class: "underline text-slate-300" %></p>

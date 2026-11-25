@@ -1,0 +1,31 @@
+<%# 金額明細。結帳頁第一次顯示時渲染一次；之後每次欄位變動，由 /checkout/quote 回傳新的版本整塊替換 %>
+<div id="price_summary" class="text-sm flex flex-col gap-1">
+  <% if quote.discount_error %>
+    <p class="text-red-600 text-xs"><%= quote.discount_error %></p>
+  <% elsif quote.discount_code %>
+    <p class="text-emerald-700 text-xs">已套用折扣碼 <%= quote.discount_code.code %></p>
+  <% end %>
+
+  <div class="flex justify-between"><span>主方案金額</span><span><%= quote.money(quote.reward_amount) %></span></div>
+  <% if quote.addons_amount.positive? %>
+    <div class="flex justify-between text-gray-600"><span>加購選項</span><span>+ <%= quote.money(quote.addons_amount) %></span></div>
+  <% end %>
+  <% if quote.discount_amount.positive? %>
+    <div class="flex justify-between text-emerald-700"><span>折扣</span><span>− <%= quote.money(quote.discount_amount) %></span></div>
+  <% end %>
+  <div class="flex justify-between text-gray-600">
+    <span>運費：<%= quote.shipping_rate&.label || "—" %></span>
+    <span>+ <%= quote.money(quote.shipping_amount) %></span>
+  </div>
+  <% if quote.donation_amount.positive? %>
+    <div class="flex justify-between text-gray-600"><span>加碼贊助</span><span>+ <%= quote.money(quote.donation_amount) %></span></div>
+  <% end %>
+
+  <% quote.errors.each do |message| %>
+    <p class="text-red-600 text-xs"><%= message %></p>
+  <% end %>
+
+  <div class="flex justify-between border-t pt-2 mt-1 text-lg font-bold">
+    <span>總金額</span><span data-testid="total"><%= quote.money(quote.total_amount) %></span>
+  </div>
+</div>

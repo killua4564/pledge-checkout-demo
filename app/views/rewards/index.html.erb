@@ -1,0 +1,17 @@
+<% content_for :title, "選擇回饋方案｜#{@project.title}" %>
+
+<h1 class="text-xl font-bold mb-1">選擇回饋方案</h1>
+<p class="text-gray-500 mb-6"><%= link_to @project.title, project_path(@project), class: "hover:underline" %></p>
+
+<div class="grid gap-4 md:grid-cols-3">
+  <% @rewards.each do |reward| %>
+    <%= render "rewards/card", reward: reward do %>
+      <% if reward.sold_out? %>
+        <span class="block text-center rounded bg-gray-200 text-gray-500 py-2">已額滿</span>
+      <% else %>
+        <%= link_to "選擇此方案", project_checkout_path(@project, reward: reward.id),
+              class: "block text-center rounded bg-emerald-600 text-white py-2" %>
+      <% end %>
+    <% end %>
+  <% end %>
+</div>

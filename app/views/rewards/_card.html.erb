@@ -1,0 +1,41 @@
+<%# 方案卡片：選方案頁與結帳頁左側共用。區塊內容（按鈕）由呼叫端傳入 %>
+<article class="rounded bg-white border p-4 flex flex-col gap-3">
+  <% if reward.image_url.present? %>
+    <%= image_tag reward.image_url, alt: "", class: "w-full rounded" %>
+  <% end %>
+
+  <h2 class="font-bold"><%= reward.title %></h2>
+
+  <div>
+    <span class="text-xl font-bold"><%= Money.format(reward.price, reward.currency) %></span>
+    <% if (label = reward.discount_label) %>
+      <span class="ml-1 rounded bg-yellow-200 px-1.5 text-xs font-bold"><%= label %></span>
+    <% end %>
+    <% if reward.list_price.present? && reward.list_price > reward.price %>
+      <p class="text-xs text-gray-500">
+        預定售價 <span class="line-through"><%= Money.format(reward.list_price, reward.currency) %></span>，
+        現省 <%= Money.format(reward.list_price - reward.price, reward.currency) %>
+      </p>
+    <% end %>
+  </div>
+
+  <p class="text-sm">
+    <span class="rounded bg-red-600 text-white px-1.5 py-0.5 text-xs">剩餘 <%= reward.remaining_quota %> 份</span>
+    <span class="text-gray-500 text-xs">已被贊助 <%= reward.quota_taken %> / <%= reward.quota_total %> 次</span>
+  </p>
+
+  <div class="text-sm text-gray-700"><%= simple_format(reward.description) %></div>
+
+  <ul class="text-xs text-gray-500 space-y-0.5">
+    <% if reward.project.addons.any? %><li>✓ 可選擇加購商品</li><% end %>
+    <% if reward.shipping_rates.any? { |rate| rate.region == "tw_main" && rate.fee.zero? } %>
+      <li>✓ 臺灣本島免運</li>
+    <% end %>
+  </ul>
+
+  <% if reward.estimated_delivery_on %>
+    <p class="text-xs text-gray-500">預計於 <%= reward.estimated_delivery_on.strftime("%Y 年 %-m 月") %>實現</p>
+  <% end %>
+
+  <%= yield %>
+</article>

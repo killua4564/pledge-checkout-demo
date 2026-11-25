@@ -1,0 +1,96 @@
+<% content_for :title, "結帳｜#{@reward.title}" %>
+<%#
+  結帳頁：左側方案摘要與金額，右側結帳資料。
+  整頁是一張表單。欄位變動時，quote controller（Stimulus）會請伺服器重算金額並替換左側金額區塊。
+%>
+<%= form_with model: @form, scope: :checkout, url: orders_path, method: :post,
+      data: { controller: "quote", quote_url_value: checkout_quote_path, action: "input->quote#refresh change->quote#refresh" },
+      class: "grid gap-6 md:grid-cols-[22rem_1fr]" do |f| %>
+  <%= f.hidden_field :checkout_token %>
+  <%= f.hidden_field :reward_id %>
+
+  <%# ───── 左側：方案摘要 + 金額 ───── %>
+  <aside class="flex flex-col gap-4">
+    <%= render "rewards/card", reward: @reward do %>
+      <%= link_to "更改回饋", project_rewards_path(@project), class: "text-sm text-emerald-700 underline self-end" %>
+    <% end %>
+
+    <div class="rounded bg-white border p-4 flex flex-col gap-3">
+      <label class="flex items-center justify-between gap-2 text-sm">
+        <span>使用折扣碼</span>
+        <%= f.text_field :discount_code, class: "border rounded px-2 py-1 w-40", autocomplete: "off" %>
+      </label>
+      <%= render "checkouts/price_summary", quote: @quote %>
+    </div>
+  </aside>
+
+  <%# ───── 右側：結帳資料 ───── %>
+  <section class="rounded bg-white border p-5 flex flex-col gap-6">
+    <% if @errors.present? %>
+      <div class="rounded bg-red-50 border border-red-200 px-4 py-3 text-red-700" role="alert">
+        <p class="font-bold mb-1">請修正以下問題：</p>
+        <ul class="list-disc pl-5 text-sm">
+          <% @errors.each do |message| %><li><%= message %></li><% end %>
+        </ul>
+      </div>
+    <% end %>
+
+    <% if @project.addons.any? %>
+      <fieldset>
+        <legend class="font-bold mb-2">加購商品（每項最多 1 個）</legend>
+        <div class="flex flex-col gap-2">
+          <% @project.addons.each do |addon| %>
+            <label class="flex items-center gap-2 border rounded px-3 py-2">
+              <%= check_box_tag "checkout[addon_ids][]", addon.id, @form.addon_ids.include?(addon.id.to_s), id: "addon_#{addon.id}" %>
+              <span class="flex-1"><%= addon.title %></span>
+              <span class="text-sm">+ <%= Money.format(addon.price, @project.currency) %></span>
+            </label>
+          <% end %>
+        </div>
+      </fieldset>
+    <% end %>
+
+    <fieldset>
+      <legend class="font-bold mb-2">付款方式</legend>
+      <div class="flex flex-col gap-2">
+        <% Payments::Registry.all.each do |adapter| %>
+          <label class="flex items-start gap-2 border rounded px-3 py-2 <%= 'bg-gray-100 text-gray-400' unless adapter.available? %>">
+            <%= f.radio_button :payment_method, adapter.method_key, disabled: !adapter.available?, class: "mt-1" %>
+            <span>
+              <span class="font-medium"><%= adapter.label %></span>
+              <% unless adapter.available? %><span class="ml-1 rounded bg-gray-300 text-gray-600 px-1.5 text-xs">尚未開放</span><% end %>
+              <span class="block text-xs"><%= adapter.description %></span>
+            </span>
+          </label>
+        <% end %>
+      </div>
+      <p class="mt-2 text-xs text-gray-500">您了解您的贊助是支持創意專案的一種方式，也了解創意實踐過程中充滿變數，專案不一定能確保回饋。</p>
+    </fieldset>
+
+    <label class="flex flex-col gap-1">
+      <span class="font-bold">加碼贊助（選填）</span>
+      <span class="flex items-center gap-2">
+        <span class="text-sm text-gray-500"><%= Money::SYMBOLS.fetch(@project.currency, @project.currency) %></span>
+        <%= f.text_field :donation, inputmode: "numeric", placeholder: "0", class: "border rounded px-3 py-2 w-40" %>
+      </span>
+    </label>
+
+    <%= render "checkouts/address_fields", f: f %>
+
+    <div class="grid gap-4 md:grid-cols-2">
+      <label class="flex flex-col gap-1">
+        <span class="font-bold">收件人</span>
+        <%= f.text_field :recipient_name, placeholder: "請輸入真實姓名，以利出貨作業進行", class: "border rounded px-3 py-2" %>
+      </label>
+      <label class="flex flex-col gap-1">
+        <span class="font-bold">聯絡電話</span>
+        <%= f.telephone_field :recipient_phone, placeholder: "例：0912345678", class: "border rounded px-3 py-2" %>
+      </label>
+    </div>
+
+    <%= render "checkouts/invoice_fields", f: f %>
+
+    <%= f.submit "確認付款", class: "rounded bg-emerald-600 text-white py-3 font-bold cursor-pointer",
+          data: { turbo_submits_with: "處理中…" } %>
+  </section>
+<% end %>
