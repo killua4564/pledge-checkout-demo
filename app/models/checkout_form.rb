@@ -10,7 +10,7 @@ class CheckoutForm
   attribute :discount_code, :string
   attribute :donation, :string
   attribute :payment_method, :string, default: "credit_card"
-  attribute :ship_region, :string, default: "tw_main"
+  attribute :ship_region, :string   # 沒有預設值：收件地點必須由使用者自己選
   attribute :ship_city, :string
   attribute :ship_district, :string
   attribute :ship_zip, :string
@@ -27,6 +27,7 @@ class CheckoutForm
   TAX_ID_FORMAT  = /\A\d{8}\z/                   # 統一編號：8 碼數字
   ZIP_FORMAT     = /\A\d{3}(\d{2,3})?\z/         # 郵遞區號：3 碼、3+2 或 3+3
 
+  validates :ship_region, presence: { message: "請選擇收件地點" }
   validates :recipient_name, presence: { message: "請填寫收件人" }
   validates :ship_address, presence: { message: "請填寫地址" }
   validates :ship_zip, format: { with: ZIP_FORMAT, message: "郵遞區號格式不正確" }

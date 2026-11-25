@@ -10,7 +10,8 @@ class PriceCalculatorTest < ActiveSupport::TestCase
     create_code(project: @project, code: "SAVE500", amount: 500)
   end
 
-  def quote(reward = @bundle, **args) = Checkout::PriceCalculator.call(reward: reward, **args)
+  # 預設寄本島；要測「還沒選收件地點」時明確傳 region: nil
+  def quote(reward = @bundle, region: "tw_main", **args) = Checkout::PriceCalculator.call(reward: reward, region: region, **args)
 
   test "A1 不選加購、不用折扣碼、本島：總額就是方案金額" do
     assert_equal 2980, quote.total_amount
@@ -156,6 +157,19 @@ class PriceCalculatorTest < ActiveSupport::TestCase
     q = quote(reward, donation: "0.5")
     assert_equal BigDecimal("20.49"), q.total_amount
     assert_equal "US$ 20.49", q.money(q.total_amount)
+  end
+
+  test "A28 還沒選收件地點：運費未知、總額不含運費、不能下單，不會自動當成本島" do
+    [nil, ""].each do |blank|
+      q = quote(addon_ids: [@addon.id], region: blank)
+      assert q.shipping_pending?, "沒選地點時運費應該是未知"
+      assert_nil q.shipping_rate
+      assert_equal 0, q.shipping_amount
+      assert_equal 3280, q.total_amount   # 2980 + 300，未含運費
+      refute q.valid?, "沒選地點不能下單"
+    end
+
+    assert_not quote(region: "tw_island").shipping_pending?
   end
 
   test "A27 所有金額都是 BigDecimal，沒有 float" do

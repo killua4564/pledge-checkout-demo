@@ -17,6 +17,7 @@ class CheckoutTest < ApplicationSystemTestCase
   def total = find("[data-testid=total]")
 
   def fill_in_recipient
+    select "台灣（本島）", from: "checkout_ship_region"
     select "新北市", from: "checkout_ship_city"
     select "新莊區", from: "checkout_ship_district"
     fill_in "checkout_ship_address", with: "中正路 1 號"
@@ -41,8 +42,36 @@ class CheckoutTest < ApplicationSystemTestCase
     assert_selector "[data-testid=total]", text: "NT$ 2,980"
   end
 
+  test "I14 收件地點預設「請選擇」、運費未知；選了地點才出現運費" do
+    visit_checkout
+    assert_select "checkout_ship_region", selected: "請選擇收件地點"
+    assert_text "（未知）"
+    assert_text "未含運費"
+    assert_no_selector "#checkout_ship_city", visible: true
+
+    select "台灣（離島）", from: "checkout_ship_region"
+    assert_no_text "（未知）"
+    assert_selector "[data-testid=total]", text: "NT$ 3,080"   # 2980 + 運費 100
+  end
+
+  test "I15 送出按鈕顯示應付金額，並跟著選擇更新" do
+    visit_checkout
+    assert_button "確認付款"
+    assert_no_selector "[data-testid=pay-amount]", text: "NT$"   # 運費未知時不顯示金額
+
+    select "台灣（本島）", from: "checkout_ship_region"
+    assert_selector "[data-testid=pay-amount]", text: "NT$ 2,980"
+
+    check "加購小物"
+    assert_selector "[data-testid=pay-amount]", text: "NT$ 3,280"
+
+    fill_in "checkout_discount_code", with: "SAVE500"
+    assert_selector "[data-testid=pay-amount]", text: "NT$ 2,780"
+  end
+
   test "I3 縣市 → 鄉鎮市區 → 郵遞區號連動；海外時隱藏縣市" do
     visit_checkout
+    select "台灣（本島）", from: "checkout_ship_region"
     select "桃園市", from: "checkout_ship_city"
     select "中壢區", from: "checkout_ship_district"
     assert_field "checkout_ship_zip", with: "320"

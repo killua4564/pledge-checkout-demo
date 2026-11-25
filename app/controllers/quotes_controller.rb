@@ -13,6 +13,10 @@ class QuotesController < ApplicationController
       donation: checkout[:donation]
     )
 
-    render turbo_stream: turbo_stream.replace("price_summary", partial: "checkouts/price_summary", locals: { quote: @quote })
+    # 一次更新兩個地方：左側金額明細、送出按鈕上的金額
+    render turbo_stream: [
+      turbo_stream.replace("price_summary", partial: "checkouts/price_summary", locals: { quote: @quote }),
+      turbo_stream.replace("pay_amount", partial: "checkouts/pay_amount", locals: { quote: @quote })
+    ]
   end
 end

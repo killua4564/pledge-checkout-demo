@@ -90,7 +90,10 @@
 
     <%= render "checkouts/invoice_fields", f: f %>
 
-    <%= f.submit "確認付款", class: "rounded bg-emerald-600 text-white py-3 font-bold cursor-pointer",
-          data: { turbo_submits_with: "處理中…" } %>
+    <%# 按鈕上的金額（pay_amount）和左側金額明細一起由 /checkout/quote 更新 %>
+    <%= f.button class: "rounded bg-emerald-600 text-white py-3 font-bold cursor-pointer",
+          data: { turbo_submits_with: "處理中…" } do %>
+      確認付款 <%= render "checkouts/pay_amount", quote: @quote %>
+    <% end %>
   </section>
 <% end %>

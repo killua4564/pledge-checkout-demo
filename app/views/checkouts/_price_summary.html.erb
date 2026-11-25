@@ -14,8 +14,13 @@
     <div class="flex justify-between text-emerald-700"><span>折扣</span><span>− <%= quote.money(quote.discount_amount) %></span></div>
   <% end %>
   <div class="flex justify-between text-gray-600">
-    <span>運費：<%= quote.shipping_rate&.label || "—" %></span>
-    <span>+ <%= quote.money(quote.shipping_amount) %></span>
+    <% if quote.shipping_pending? %>
+      <%# 還沒選收件地點：運費未知，總額先不含運費 %>
+      <span>運費</span><span>+（未知）</span>
+    <% else %>
+      <span>運費：<%= quote.shipping_rate&.label || "—" %></span>
+      <span>+ <%= quote.money(quote.shipping_amount) %></span>
+    <% end %>
   </div>
   <% if quote.donation_amount.positive? %>
     <div class="flex justify-between text-gray-600"><span>加碼贊助</span><span>+ <%= quote.money(quote.donation_amount) %></span></div>
@@ -28,4 +33,7 @@
   <div class="flex justify-between border-t pt-2 mt-1 text-lg font-bold">
     <span>總金額</span><span data-testid="total"><%= quote.money(quote.total_amount) %></span>
   </div>
+  <% if quote.shipping_pending? %>
+    <p class="text-xs text-gray-500 text-right">未含運費，請選擇收件地點</p>
+  <% end %>
 </div>

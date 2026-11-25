@@ -95,6 +95,15 @@ class CheckoutFlowTest < ActionDispatch::IntegrationTest
     assert_match "折扣碼不存在", response.body
   end
 
+  test "C14 沒選收件地點就送出：422「請選擇收件地點」，不建立訂單、不扣名額" do
+    assert_no_difference -> { Order.count } do
+      submit(ship_region: "")
+    end
+    assert_response :unprocessable_entity
+    assert_match "請選擇收件地點", response.body
+    assert_equal 190, @reward.reload.quota_taken
+  end
+
   test "C10 方案不存在、或方案屬於其他專案：404；沒帶方案：回選方案頁" do
     get project_checkout_path(@project)
     assert_redirected_to project_rewards_path(@project)

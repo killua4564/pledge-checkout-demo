@@ -2,12 +2,13 @@
   收件地址：地區 → 縣市 → 鄉鎮市區 → 郵遞區號。
   縣市、鄉鎮市區的連動由 address controller（Stimulus）處理，資料來自 config/tw_zipcodes.yml。
   寄海外時隱藏縣市與鄉鎮市區，只需要填地址與郵遞區號。
+  收件地點預設「請選擇收件地點」，不預設本島，避免沒注意就用錯的運費下單（spec §3.4）。
 %>
 <% zipcodes = TwZipcode.all %>
 <fieldset data-controller="address" data-address-zipcodes-value="<%= zipcodes.to_json %>">
   <legend class="font-bold mb-2">收件地點</legend>
 
-  <%= f.select :ship_region, @reward.shipping_rates.map { |rate| [rate.label, rate.region] }, {},
+  <%= f.select :ship_region, @reward.shipping_rates.map { |rate| [rate.label, rate.region] }, { include_blank: "請選擇收件地點" },
         class: "border rounded px-3 py-2 w-full mb-3", aria: { label: "收件地區" },
         data: { address_target: "region", action: "address#regionChanged" } %>
 

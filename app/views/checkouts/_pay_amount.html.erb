@@ -1,0 +1,2 @@
+<%# 送出按鈕上的應付金額。運費還不確定（沒選收件地點）時不顯示，避免金額看起來比實際少 %>
+<span id="pay_amount" data-testid="pay-amount"><%= quote.money(quote.total_amount) unless quote.shipping_pending? %></span>
