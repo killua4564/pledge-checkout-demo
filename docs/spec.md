@@ -135,6 +135,8 @@
 | virtual_account, pay_deadline | ATM 用 |
 | payload | 金流原始回應（JSON） |
 
+索引：`order_id`；`(provider, provider_trade_no)` 唯一；**部分索引** `order_id WHERE status = 'needs_review'`，給逾期處理排除「需人工處理」的訂單用（§6.7）。這種付款極少，索引很小、寫入成本幾乎為零；沒有它，逾期處理每次都要掃過整張付款表。
+
 ### 3.10 `payment_events`
 `provider, event_id`（複合唯一）`, payment_id, signature_valid, raw_body, result(applied / duplicate / rejected_signature / rejected_amount / ignored / malformed), note, created_at`
 
@@ -192,6 +194,8 @@ pending_payment ┼── cancel ─▶ cancelled
 3. 寫入 `order_transitions` 與對應的時間欄位
 
 第 1 步保證一張訂單只會離開 `pending_payment` 一次，所以名額不會重複釋放，也不需要額外的旗標欄位。
+
+呼叫端可以再附加條件（`guard:`），條件會併進第 1 步的同一句 `UPDATE`。例如逾期處理附加「沒有需人工處理的付款」（§6.7）。原則是**檢查和動作在同一句 SQL 完成**，中間沒有空檔讓其他請求插隊。
 
 ### 4.4 手寫狀態機 vs AASM
 
@@ -371,6 +375,8 @@ refund 目前丟 NotImplementedError（退款擴充點）
 
 ### 6.7 逾期取消（`Orders::ExpireOverdue`）
 條件：`status = pending_payment AND expires_at < now AND 沒有 needs_review 的付款` → 逐筆 expire。
+
+「沒有 needs_review 的付款」除了用來挑出候選訂單，也會**併進轉 expired 的那句 `UPDATE`**（§4.3 的 `guard:`）。否則「先查出名單、再一筆筆轉換」之間，若剛好收到金額不符的通知，訂單仍會被轉成過期並釋放名額。現在這種訂單會被跳過（計入 skipped）。
 執行：`bin/rails orders:expire_overdue`（部署在 Heroku 時可用 Scheduler 定期執行）。Demo 用 `ATM_EXPIRE_MINUTES=1` 縮短期限。
 
 ### 6.8 假金流

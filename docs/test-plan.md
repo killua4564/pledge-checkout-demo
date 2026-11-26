@@ -49,6 +49,7 @@
 | B6 | 同時呼叫 expire 與 cancel | 只有一個成功，名額只釋放一次 |
 | B7 | 轉為 failed／cancelled／expired | 名額減 1 |
 | B8 | 轉換中途丟例外 | 整個交易回復 |
+| B9 | 轉換附加條件（guard） | 條件成立才轉換；不成立丟 InvalidTransition；只影響這一張訂單 |
 
 ## C. 建立訂單與驗證
 
@@ -118,6 +119,8 @@
 | F8 | 信用卡 15 分鐘逾時 | 同 F3 |
 | F9 | 訂單有 needs_review 的付款 | 跳過 |
 | F10 | 設定 `ATM_EXPIRE_MINUTES` | 生效 |
+| F11 | 已挑出要逾期的訂單後，才收到金額不符的通知 | 不轉 expired、不釋放名額，計入 skipped |
+| F12 | 逾期處理的查詢計畫 | 用部分索引找 needs_review 付款，不掃整張 payments |
 
 ## G. Adapter
 

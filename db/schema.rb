@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_25_000001) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_26_000001) do
   create_table "addons", force: :cascade do |t|
     t.integer "project_id", null: false
     t.string "title", null: false
@@ -133,6 +133,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_25_000001) do
     t.json "payload", default: {}, null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.index ["order_id"], name: "index_payments_needing_review", where: "status = 'needs_review'"
     t.index ["order_id"], name: "index_payments_on_order_id"
     t.index ["provider", "provider_trade_no"], name: "index_payments_on_provider_and_provider_trade_no", unique: true
   end

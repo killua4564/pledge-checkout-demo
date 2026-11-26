@@ -9,16 +9,21 @@
 #   3. 寫一筆 order_transitions 稽核紀錄
 #
 # 因為第 1 步保證一張訂單只會離開 pending_payment 一次，名額也只會被釋放一次。
+#
+# guard（選填）：呼叫端想再加的條件（一個 Order 的查詢範圍），會併進第 1 步的同一句 UPDATE。
+#   例：逾期處理附加「沒有需人工處理的付款」，條件不成立就和狀態不對一樣，丟 InvalidTransition。
+#   重點是「檢查」和「動作」在同一句 SQL 裡完成，不要先查再改（spec §4.3）。
 module Orders
   class Transition
-    def self.call(order, event, reason:)
-      new(order, event, reason).call
+    def self.call(order, event, reason:, guard: nil)
+      new(order, event, reason, guard).call
     end
 
-    def initialize(order, event, reason)
+    def initialize(order, event, reason, guard = nil)
       @order = order
       @event = event
       @reason = reason
+      @guard = guard
     end
 
     def call
@@ -28,13 +33,17 @@ module Orders
       now = Time.current
 
       Order.transaction do
-        changed = Order.where(id: @order.id, status: rule[:from])
-                       .update_all(status: rule[:to], "#{rule[:to]}_at": now, updated_at: now)
+        scope = Order.where(id: @order.id, status: rule[:from])
+        # 用 and 不用 merge：merge 遇到同一個欄位（例如兩邊都對 id 下條件）會用後者「覆蓋」前者，
+        # 「id = 這張訂單」會被蓋掉，變成一次更新一整批訂單。and 會保留兩邊的條件。
+        scope = scope.and(@guard) if @guard
+        changed = scope.update_all(status: rule[:to], "#{rule[:to]}_at": now, updated_at: now)
 
-        # 影響 0 列：訂單目前不是 rule[:from]（可能早就被別人處理了），拒絕這次轉換
+        # 影響 0 列：訂單目前不是 rule[:from]（可能早就被別人處理了），或 guard 條件不成立，拒絕這次轉換
         if changed.zero?
           current = Order.where(id: @order.id).pick(:status)
-          raise Order::InvalidTransition, "無法從「#{current}」執行 #{@event}"
+          reason = current == rule[:from] && @guard ? "（附加條件不成立）" : ""
+          raise Order::InvalidTransition, "無法從「#{current}」執行 #{@event}#{reason}"
         end
 
         Inventory.release(@order.reward_id) if Order::RELEASING_STATUSES.include?(rule[:to])

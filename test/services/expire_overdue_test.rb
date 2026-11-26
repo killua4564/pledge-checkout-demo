@@ -71,6 +71,34 @@ class ExpireOverdueTest < ActiveSupport::TestCase
     assert_equal 1, @reward.reload.quota_taken
   end
 
+  test "F11 已挑出要逾期的訂單後，才收到金額不符的通知：不轉 expired、不釋放名額" do
+    order = atm_order
+    original = Orders::Transition.method(:call)
+    notify = method(:deliver_callback)   # 先存起來：替身方法執行時 self 是 Orders::Transition，叫不到測試的方法
+    # 模擬時間差：逾期處理已經把訂單挑出來，在真正轉換前的那一刻，金額不符的通知到了
+    callback_sneaks_in = lambda do |target, *args, **kw|
+      notify.call(order.latest_payment, amount: order.total_amount + 1)
+      original.call(target, *args, **kw)
+    end
+
+    result = nil
+    stub_method(Orders::Transition, :call, callback_sneaks_in) do
+      result = Orders::ExpireOverdue.call(now: 4.days.from_now)
+    end
+    assert_equal [0, 1], [result.expired, result.skipped]
+    assert_equal "pending_payment", order.reload.status
+    assert_equal 1, @reward.reload.quota_taken
+  end
+
+  test "F12 逾期處理用部分索引找 needs_review 付款，不掃整張 payments" do
+    sql = Orders::ExpireOverdue.new(Time.current).send(:overdue_orders).to_sql
+    plan = ActiveRecord::Base.connection.select_rows("EXPLAIN QUERY PLAN #{sql}").map(&:last).join("\n")
+    # 「SCAN payments」後面什麼都沒接 = 整張表從頭翻到尾；
+    # 「SCAN payments USING COVERING INDEX ...」是只翻那個只收 needs_review 的小索引，沒問題
+    assert_no_match(/^SCAN payments$/, plan)
+    assert_match(/USING COVERING INDEX index_payments_needing_review/, plan)
+  end
+
   test "F10 ATM_EXPIRE_MINUTES 可以縮短期限（Demo 用）" do
     settings = Rails.configuration.x.checkout
     original = settings.atm_expire_minutes

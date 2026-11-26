@@ -55,4 +55,19 @@ class OrderTransitionTest < ActiveSupport::TestCase
     assert_equal "pending_payment", @order.reload.status
     assert_equal 1, @reward.reload.quota_taken
   end
+
+  test "B9 附加條件（guard）：成立才轉換、不成立就拒絕，而且只影響這一張訂單" do
+    other = place_order!(@reward)
+    no_review = Order.where.not(id: Payment.where(status: "needs_review").select(:order_id))
+
+    Orders::Transition.call(@order, :expire, reason: "測試", guard: no_review)
+    assert_equal "expired", @order.reload.status
+    assert_equal "pending_payment", other.reload.status, "附加條件不能讓其他訂單一起被轉換"
+
+    other.latest_payment.flag_for_review!("amount_mismatch")
+    assert_raises(Order::InvalidTransition) do
+      Orders::Transition.call(other, :expire, reason: "測試", guard: no_review)
+    end
+    assert_equal "pending_payment", other.reload.status
+  end
 end

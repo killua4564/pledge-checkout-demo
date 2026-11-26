@@ -121,7 +121,7 @@ Demo 資料（`db/seeds.rb`）：
 
 | 想看什麼 | 檔案 |
 |---|---|
-| 所有資料表 | `db/migrate/20261125000001_create_checkout_schema.rb` |
+| 所有資料表 | `db/migrate/20261125000001_create_checkout_schema.rb`（之後的索引調整在同資料夾的新 migration；完整現況看 `db/schema.rb`） |
 | 金額計算 | `app/services/checkout/price_calculator.rb` |
 | 建立訂單 | `app/services/orders/create.rb` |
 | 狀態機 | `app/models/order.rb`（轉換表）、`app/services/orders/transition.rb` |
