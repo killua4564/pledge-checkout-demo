@@ -104,6 +104,14 @@ class CheckoutFlowTest < ActionDispatch::IntegrationTest
     assert_equal 190, @reward.reload.quota_taken
   end
 
+  test "C15 驗證失敗重新顯示：錯誤欄位加紅框與 aria-invalid，不額外包一層 div" do
+    submit(ship_zip: "abc")
+    assert_response :unprocessable_entity
+    # Rails 預設會包 <div class="field_with_errors">，會讓格線排版跑掉，所以不能出現
+    assert_no_match "field_with_errors", response.body
+    assert_select "input[name='checkout[ship_zip]'][aria-invalid='true'].border-red-500"
+  end
+
   test "C10 方案不存在、或方案屬於其他專案：404；沒帶方案：回選方案頁" do
     get project_checkout_path(@project)
     assert_redirected_to project_rewards_path(@project)
