@@ -4,7 +4,8 @@
 # （ApplicationController 預設就回 Cache-Control: no-store）。
 class CheckoutsController < ApplicationController
   def show
-    @project = Project.find_by!(slug: params[:project_slug])
+    # 先載入加購：方案卡片的「可選擇加購」和加購清單共用同一份，只查一次（spec §9 查詢原則）
+    @project = Project.includes(:addons).find_by!(slug: params[:project_slug])
     # 沒帶方案 → 先回選方案頁
     return redirect_to(project_rewards_path(@project)) if params[:reward].blank?
 

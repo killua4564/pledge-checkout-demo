@@ -467,6 +467,10 @@ config/         tw_zipcodes.yml
 ```
 Controller 只負責接參數、呼叫 service、決定畫面；業務規則放在 service 與 model。
 
+**查詢原則**：列表頁在 controller 一次載入畫面會用到的關聯（`includes`），SQL 句數不隨列表長度增加（避免 N+1）。
+- 選方案頁：方案＋運費＋專案加購
+- 結帳頁：專案加購只載入一次，「有沒有加購」和「加購清單」共用同一份
+
 ---
 
 ## 10. Seed

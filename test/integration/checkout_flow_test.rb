@@ -288,6 +288,37 @@ class CheckoutFlowTest < ActionDispatch::IntegrationTest
     assert_empty writes
   end
 
+  # 計算一段程式「向資料庫問了幾次」。
+  # 被 Rails 查詢快取擋下的也要算：測試裡同一個測試的多次請求會共用快取，
+  # 不算的話第二次打開同一頁會變成 0 句，看不出程式其實問了幾次（N+1 看的是這個）。
+  # 資料表結構查詢（SCHEMA）是 Rails 自己第一次載入時做的，不算。
+  # pattern：只算符合的句子（例如只算查 addons 表的）
+  def count_queries(pattern = nil, &block)
+    count = 0
+    counter = lambda do |*, payload|
+      next if payload[:name] == "SCHEMA"
+      count += 1 if pattern.nil? || payload[:sql].match?(pattern)
+    end
+    ActiveSupport::Notifications.subscribed(counter, "sql.active_record", &block)
+    count
+  end
+
+  test "H6 沒有 N+1：方案、加購變多，SQL 句數不變；結帳頁的加購只查一次" do
+    get project_rewards_path(@project)   # 先暖機，排除第一次載入的額外查詢
+    rewards_page = count_queries { get project_rewards_path(@project) }
+    checkout_page = count_queries { get project_checkout_path(@project, reward: @reward.id) }
+
+    3.times do |i|
+      create_reward(project: @project, title: "多的方案 #{i}")
+      create_addon(project: @project, title: "多的加購 #{i}")
+    end
+
+    assert_equal rewards_page, count_queries { get project_rewards_path(@project) }, "選方案頁有 N+1"
+    assert_equal checkout_page, count_queries { get project_checkout_path(@project, reward: @reward.id) }, "結帳頁有 N+1"
+    assert_equal 1, count_queries(/FROM "addons"/) { get project_checkout_path(@project, reward: @reward.id) },
+                 "結帳頁的「有沒有加購」和「加購清單」應該共用同一次查詢"
+  end
+
   # ── 即時金額預覽 ──
 
   test "金額預覽：回傳新的金額區塊，與下單計算一致" do

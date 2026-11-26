@@ -2,7 +2,8 @@
 class OrdersController < ApplicationController
   # POST /orders
   def create
-    @reward = Reward.includes(:project, :shipping_rates).find(checkout_params[:reward_id])
+    # 驗證失敗時會重新顯示結帳頁，所以和結帳頁一樣先載入專案的加購
+    @reward = Reward.includes({ project: :addons }, :shipping_rates).find(checkout_params[:reward_id])
     result = Orders::Create.call(reward: @reward, params: checkout_params)
 
     if result.success?

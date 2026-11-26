@@ -6,9 +6,11 @@ class RewardsController < ApplicationController
 
   # 選方案頁 /projects/:slug/rewards（讀取，可快取）
   def index
-    @project = Project.find_by!(slug: params[:project_slug])
+    # 一次載入畫面會用到的關聯，避免 N+1（spec §9 查詢原則）：
+    # 每張方案卡片都要看「有沒有加購」和「本島是否免運」，不先載入的話每張卡片各查一次
+    @project = Project.includes(:addons).find_by!(slug: params[:project_slug])
     allow_public_cache!
-    @rewards = @project.rewards
+    @rewards = @project.rewards.includes(:shipping_rates)
   end
 
   def stock
