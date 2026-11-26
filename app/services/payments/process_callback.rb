@@ -63,8 +63,10 @@ module Payments
 
     def apply(event, payment)
       if event.amount != payment.amount || event.currency != payment.currency
-        payment.flag_for_review!("amount_mismatch")
-        return ["rejected_amount", "金額不符：通知 #{event.amount} #{event.currency}，應為 #{payment.amount} #{payment.currency}"]
+        note = "金額不符：通知 #{event.amount} #{event.currency}，應為 #{payment.amount} #{payment.currency}"
+        # 付款已經 paid 時 flag_for_review! 不會改狀態（回傳 false），只把這則通知記下來
+        flagged = payment.flag_for_review!("amount_mismatch")
+        return ["rejected_amount", flagged ? note : "#{note}；付款已完成，只記錄不改狀態"]
       end
 
       event.success? ? apply_success(payment) : apply_failure(payment)

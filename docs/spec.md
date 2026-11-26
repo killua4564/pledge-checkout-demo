@@ -346,7 +346,7 @@ refund 目前丟 NotImplementedError（退款擴充點）
 2. 時間戳與現在相差超過 5 分鐘 → 拒絕（防重放）
 3. 用 `trade_no` 找 payment。找不到 → 200＋ignored
 4. 寫入 `payment_events`。撞到唯一索引 → 200＋duplicate
-5. 金額不符 → payment 標為 `needs_review(amount_mismatch)`，回 200
+5. 金額不符 → payment 標為 `needs_review(amount_mismatch)`，回 200。**payment 已經是 `paid` 時只記錄通知（`rejected_amount`），不改狀態**：錢已正確入帳，後到的異常通知不能推翻終點狀態。標記用條件更新（`WHERE status <> 'paid'`），和成功通知同時到也不會蓋掉
 6. 依訂單目前狀態處理：
 
 | 訂單狀態 | 通知 | 處理 |

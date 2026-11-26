@@ -104,6 +104,7 @@
 | E15 | 訂單已 expired 或 cancelled 才收到 success | 訂單不變；payment 標為 needs_review(late_payment)；訂單頁顯示將辦理退款 |
 | E16 | 內文不是 JSON 或缺少欄位 | 回 400 |
 | E17 | 瀏覽器直接造訪 `/orders/:id?status=paid` | 狀態不變【Demo】 |
+| E18 | 已付款後才收到金額不符的通知 | payment 維持 paid；通知記錄為 rejected_amount |
 
 ## F. 逾期
 

@@ -113,6 +113,15 @@ class PaymentCallbackTest < ActionDispatch::IntegrationTest
     assert_match "付款資訊異常，客服將與你聯繫", response.body
   end
 
+  test "E18 已付款後才收到金額不符：付款維持 paid，只記錄通知" do
+    callback!(status: "success")
+    callback!(status: "success", amount: @payment.amount + 1)
+    assert_response :ok
+    assert_equal "rejected_amount", response.parsed_body["result"]
+    assert_equal ["paid", nil], @payment.reload.values_at(:status, :review_reason)
+    assert_equal "paid", @order.reload.status
+  end
+
   test "E15 訂單已過期才收到 success：訂單不變，付款標記待退款" do
     Orders::Transition.call(@order, :expire, reason: "逾期")
     callback!(status: "success")
