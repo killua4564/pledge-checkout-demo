@@ -16,8 +16,20 @@
 2. **討論**：把影響範圍、衝突與可選做法（含取捨）用白話告訴使用者，**等使用者確認結論**。這一步不改任何檔案。
 3. **改文件**：更新 `docs/spec.md`（必要時 `docs/decisions.md`），並在 `docs/test-plan.md` 加上新測項編號。
 4. **先寫測試**，再改程式。
-5. **驗證**：跑全部測試；能在畫面上看到的改動，啟動伺服器實際在瀏覽器操作一次。
-6. 回報改了什麼、哪些還沒驗證；**使用者同意後才 commit**。
+5. **自我檢查**：寫完程式後，對照下方「資料庫檢查清單」逐項看過，有發現就補測試再修。
+6. **驗證**：跑全部測試；能在畫面上看到的改動，啟動伺服器實際在瀏覽器操作一次。
+7. 回報改了什麼、哪些還沒驗證；**使用者同意後才 commit**。
+
+## 資料庫檢查清單（排查與自我檢查時都要看）
+新增或修改任何查詢、寫入時逐項確認；在「排查」階段就要把會碰到的項目列出來討論，不要等寫完才發現。
+
+| 檢查 | 怎麼確認 | 做法 |
+|---|---|---|
+| **Index**：新的查詢條件、排序、子查詢有沒有用到索引？ | `EXPLAIN QUERY PLAN`；出現 `SCAN 表名`（後面沒接 `USING INDEX`）＝整張表掃描 | 加索引要另開新的 migration，不改舊的；只查少數幾筆（例如某個狀態）時用部分索引。也要想寫入成本：小表或不會變大的表不用加 |
+| **N+1**：列表或迴圈裡有沒有存取關聯（`reward.shipping_rates`、`order.payments`…）？ | 在整合測試裡計算 SQL 句數，資料變多時句數不能跟著變多（參考 H6） | 在 controller 用 `includes` 一次載入；同一份資料（例如「有沒有加購」和「加購清單」）只查一次 |
+| **Race condition**：有沒有「先查，再依結果寫」？ | 想像兩個請求同時進來、或在查和寫之間插入另一個請求 | 檢查和動作放在同一句 SQL（條件更新 `UPDATE … WHERE`），或用唯一索引擋重複；不要先讀狀態再 `update!` |
+| **終點狀態**：已完成的資料（例如 paid）會不會被後到的事件改掉？ | 列出每個狀態可能收到的事件（含重複、順序顛倒、異常通知） | 終點狀態只記錄、不改；改狀態一律帶條件 |
+| **條件合併**：要把兩個查詢條件合在一起時 | 印出 `to_sql` 看兩邊條件是否都還在 | 用 `and`，不要用 `merge`：`merge` 遇到同一個欄位會用後者覆蓋前者（曾因此讓 UPDATE 一次改到整批訂單） |
 
 ## Commit 規則
 - 在 `main` 上 commit；**不要 push**，使用者看過後自己 push。
@@ -29,7 +41,8 @@
 ## 核心規則（改程式時不能破壞）
 - **金額只在伺服器算**：`Checkout::PriceCalculator` 是唯一算錢的地方，預覽與下單共用；前端只送「選了什麼」。
 - **名額用條件更新扣**：`Inventory` 用 `UPDATE … WHERE quota_taken < quota_total`，不要改成先查再寫。
-- **狀態只能經由 `Orders::Transition` 改**：轉換表在 `Order::TRANSITIONS`，條件更新保證只轉一次；失效狀態會釋放名額。
+- **狀態只能經由 `Orders::Transition` 改**：轉換表在 `Order::TRANSITIONS`，條件更新保證只轉一次；失效狀態會釋放名額。需要額外條件時用 `guard:` 併進同一句 UPDATE（例如逾期處理排除需人工處理的付款）。
+- **已付款的付款不再改狀態**：`Payment#flag_for_review!` 是條件更新，`paid` 不會被後到的異常通知改成 `needs_review`。
 - **只有驗簽通過的 callback 能改付款結果**：`Payments::ProcessCallback`；`payment_events (provider, event_id)` 唯一索引負責冪等。
 - **付款方式一律透過 adapter**：`Payments::Registry` ＋ `app/services/payments/adapters/*`，訂單流程不認識具體金流。
 - **讀寫分離**：讀取頁用 `PublicCacheable`（不寫 session、不輸出 CSRF、可公開快取）；結帳與訂單頁不可快取。
@@ -44,7 +57,7 @@ app/models/order.rb                         狀態與轉換表
 app/models/checkout_form.rb                 結帳欄位驗證
 app/controllers/                            只接參數、呼叫 service、決定畫面
 app/javascript/controllers/                 Stimulus：quote（即時金額）、address、invoice、poll
-db/migrate/                                 單一 migration 定義全部資料表
+db/migrate/                                 第一個 migration 定義全部資料表；之後的調整（例如加索引）另開新的 migration
 db/seeds.rb                                 Demo 資料（方案 ID 1～5）
 ```
 
