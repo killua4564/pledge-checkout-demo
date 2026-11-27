@@ -3,9 +3,11 @@
   縣市、鄉鎮市區的連動由 address controller（Stimulus）處理，資料來自 config/tw_zipcodes.yml。
   寄海外時隱藏縣市與鄉鎮市區，只需要填地址與郵遞區號。
   收件地點預設「請選擇收件地點」，不預設本島，避免沒注意就用錯的運費下單（spec §3.4）。
+  縣市只列出所選收件地點的（本島／離島），因為運費跟著收件地點走，兩者必須一致。
 %>
 <% zipcodes = TwZipcode.all %>
-<fieldset data-controller="address" data-address-zipcodes-value="<%= zipcodes.to_json %>">
+<fieldset data-controller="address" data-address-zipcodes-value="<%= zipcodes.to_json %>"
+          data-address-cities-value="<%= TwZipcode.cities_by_region.to_json %>">
   <legend class="font-bold mb-2">收件地點</legend>
 
   <%= f.select :ship_region, @reward.shipping_rates.map { |rate| [rate.label, rate.region] }, { include_blank: "請選擇收件地點" },
@@ -15,7 +17,8 @@
   <div class="grid gap-3 md:grid-cols-2 mb-3" data-address-target="taiwanOnly">
     <label class="flex flex-col gap-1">
       <span class="text-sm">縣市</span>
-      <%= f.select :ship_city, zipcodes.keys, { include_blank: "請選擇縣市" },
+      <%# 伺服器先依收件地點列出縣市（驗證失敗重新顯示時也正確）；之後切換收件地點由 address controller 重建選項 %>
+      <%= f.select :ship_city, TwZipcode.cities_for(@form.ship_region), { include_blank: "請選擇縣市" },
             class: "border rounded px-3 py-2", data: { address_target: "city", action: "address#cityChanged" } %>
     </label>
     <label class="flex flex-col gap-1">

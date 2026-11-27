@@ -104,6 +104,35 @@ class CheckoutFlowTest < ActionDispatch::IntegrationTest
     assert_equal 190, @reward.reload.quota_taken
   end
 
+  test "C16 縣市不屬於收件地點、鄉鎮市區不屬於縣市：422，不建立訂單、不扣名額" do
+    mismatches = {
+      "本島＋金門縣（會少收離島運費）" => { ship_region: "tw_main",   ship_city: "金門縣", ship_district: "金沙鎮" },
+      "離島＋新北市"                 => { ship_region: "tw_island", ship_city: "新北市", ship_district: "新莊區" },
+      "金門縣＋板橋區"               => { ship_region: "tw_island", ship_city: "金門縣", ship_district: "板橋區" },
+    }
+    mismatches.each do |label, fields|
+      assert_no_difference -> { Order.count }, label do
+        submit(**fields)
+      end
+      assert_response :unprocessable_entity, label
+    end
+    assert_equal 190, @reward.reload.quota_taken
+
+    submit(**mismatches.fetch("本島＋金門縣（會少收離島運費）"))
+    assert_match "縣市與收件地點不符", response.body
+    submit(**mismatches.fetch("金門縣＋板橋區"))
+    assert_match "鄉鎮市區與縣市不符", response.body
+  end
+
+  test "C17 收件地點是海外卻帶了縣市與鄉鎮市區：照常下單，但不儲存縣市與區" do
+    submit(ship_region: "overseas", ship_city: "金門縣", ship_district: "金沙鎮", ship_zip: "10001", ship_address: "1 Main St, New York")
+    order = Order.last
+    assert_equal "overseas", order.ship_region
+    assert_nil order.ship_city
+    assert_nil order.ship_district
+    assert_equal "1 Main St, New York", order.ship_address
+  end
+
   test "C15 驗證失敗重新顯示：錯誤欄位加紅框與 aria-invalid，不額外包一層 div" do
     submit(ship_zip: "abc")
     assert_response :unprocessable_entity

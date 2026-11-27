@@ -80,6 +80,36 @@ class CheckoutTest < ApplicationSystemTestCase
     assert_no_selector "#checkout_ship_city", visible: true
   end
 
+  test "I16 縣市只列出所選收件地點的；切換收件地點會清空；選過金門再改海外，訂單不會記成金門" do
+    visit_checkout
+    select "台灣（離島）", from: "checkout_ship_region"
+    assert_equal ["請選擇縣市", "澎湖縣", "金門縣"], all("#checkout_ship_city option").map(&:text)
+
+    select "台灣（本島）", from: "checkout_ship_region"
+    city_names = all("#checkout_ship_city option").map(&:text)
+    assert_includes city_names, "新北市"
+    assert_not_includes city_names, "金門縣"
+
+    # 你回報的情境：離島 → 金門金沙鎮 → 改成海外 → 送出
+    select "台灣（離島）", from: "checkout_ship_region"
+    select "金門縣", from: "checkout_ship_city"
+    select "金沙鎮", from: "checkout_ship_district"
+    assert_field "checkout_ship_zip", with: "890"
+
+    select "海外", from: "checkout_ship_region"
+    assert_field "checkout_ship_zip", with: ""            # 切換地點後清空
+    assert_equal "", find("#checkout_ship_city", visible: :all).value
+    fill_in "checkout_ship_zip", with: "10001"
+    fill_in "checkout_ship_address", with: "1 Main St, New York"
+    fill_in "checkout_recipient_name", with: "王小明"
+    fill_in "checkout_recipient_phone", with: "0912345678"
+    click_on "確認付款"
+
+    assert_current_path %r{/fake_gateway/pay/}   # 已建立訂單、進到假金流付款頁
+    order = Order.last
+    assert_equal ["overseas", nil, nil], [order.ship_region, order.ship_city, order.ship_district]
+  end
+
   test "I4 個人／公司發票切換" do
     visit_checkout
     assert_selector "#checkout_carrier_code", visible: true

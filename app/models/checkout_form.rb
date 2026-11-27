@@ -41,6 +41,14 @@ class CheckoutForm
   def carrier_code = super.to_s.strip.upcase.presence
   def addon_ids = Array(super).compact_blank
 
+  # 縣市、鄉鎮市區只有寄台灣時才有意義。
+  # 寄海外時一律當成沒填：瀏覽器可能還帶著之前選過的值（例如先選金門、再改海外），
+  # 不丟掉的話訂單會記成「海外＋金門」（spec §3.4）。
+  def ship_city = taiwan? ? super.presence : nil
+  def ship_district = taiwan? ? super.presence : nil
+
+  def taiwan? = ship_region.to_s.start_with?("tw_")
+
   # 付款方式要另外檢查（0 元訂單不需要付款方式，所以不放在一般驗證裡）
   def validate_payment_method!
     return if Payments::Registry.available?(payment_method)
@@ -51,11 +59,23 @@ class CheckoutForm
   private
 
   # 寄送台灣時，縣市與鄉鎮市區必填（海外只需要地址與郵遞區號）
+  # 台灣地址：縣市要屬於所選的收件地點、鄉鎮市區要屬於所選的縣市（spec §3.4）。
+  # 正常在畫面上操作不會選到不一致的組合（下拉只列出對應的選項），這裡擋的是竄改表單或舊頁面送來的資料；
+  # 不擋的話，選「本島」卻填金門會用本島運費寄到離島。
   def taiwan_address
-    return unless ship_region.to_s.start_with?("tw_")
+    return unless taiwan?
 
-    errors.add(:ship_city, "請選擇縣市") if ship_city.blank?
-    errors.add(:ship_district, "請選擇鄉鎮市區") if ship_district.blank?
+    if ship_city.blank?
+      errors.add(:ship_city, "請選擇縣市")
+    elsif !TwZipcode.cities_for(ship_region).include?(ship_city)
+      errors.add(:ship_city, "縣市與收件地點不符，請重新選擇")
+    end
+
+    if ship_district.blank?
+      errors.add(:ship_district, "請選擇鄉鎮市區")
+    elsif ship_city.present? && !TwZipcode.districts(ship_city).key?(ship_district)
+      errors.add(:ship_district, "鄉鎮市區與縣市不符，請重新選擇")
+    end
   end
 
   def invoice_details
